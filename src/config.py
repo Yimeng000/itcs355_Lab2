@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-ENV_FILE = REPO_ROOT / "cloud.env"
+ENV_FILE = Path(os.environ.get("SECRET_STORE_PATH", REPO_ROOT / "cloud.env"))
 
 # The eight capability slots every lab depends on. scripts/cloud_check.py resolves each.
 CAPABILITY_SLOTS = (

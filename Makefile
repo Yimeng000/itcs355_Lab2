@@ -25,7 +25,7 @@ data: ## Generate the default dataset (deterministic)
 	python scripts/make_dataset.py --seed $(SEED)
 
 test: ## Run data contract and split property tests
-	pytest -q tests/
+	PYTHONPATH=. pytest -q tests/
 
 portability-audit: ## Fail if provider strings leak into src/
 	python scripts/portability_audit.py
@@ -42,6 +42,7 @@ image-push: image ## Push to CONTAINER_REGISTRY via your adapter
 
 reproduce: data image ## THE ONE COMMAND. Grader runs this.
 	docker run --rm \
+         --user $$(id -u):$$(id -g) \
 	  -v "$$PWD/data:/app/data:ro" \
 	  -v "$$PWD/reports:/app/reports" \
 	  -e MLFLOW_TRACKING_URI=sqlite:////app/reports/mlflow.db \

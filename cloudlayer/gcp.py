@@ -15,20 +15,64 @@ Hints for Lab 1:
 """
 from __future__ import annotations
 
-from typing import Any
+import subprocess
+from pathlib import Path
+
+from google.cloud import storage
+from google.cloud import aiplatform
 
 from cloudlayer.base import CloudAdapter
 
 
 class GcpAdapter(CloudAdapter):
     def upload(self, local_path: str, key: str) -> str:
-        raise NotImplementedError("TODO Lab 1: blob.upload_from_filename, return the gs:// URI")
+        blob_uri = self.cfg.blob_uri
+        bucket_name, prefix = blob_uri.removeprefix("gs://").split("/", 1)
+
+        client = storage.Client(project=self.cfg.project_id)
+        bucket = client.bucket(bucket_name)
+
+        object_name = f"{prefix.rstrip('/')}/{key.lstrip('/')}"
+        blob = bucket.blob(object_name)
+        blob.upload_from_filename(local_path)
+
+        return f"gs://{bucket_name}/{object_name}"
 
     def download(self, uri: str, local_path: str) -> None:
-        raise NotImplementedError("TODO Lab 1: blob.download_to_filename, creating parents")
+        bucket_name, object_name = uri.removeprefix("gs://").split("/", 1)
+
+        client = storage.Client(project=self.cfg.project_id)
+        bucket = client.bucket(bucket_name)
+        blob = bucket.blob(object_name)
+
+        Path(local_path).parent.mkdir(parents=True, exist_ok=True)
+        blob.download_to_filename(local_path)
 
     def push_image(self, local_tag: str) -> str:
-        raise NotImplementedError("TODO Lab 1: configure-docker, push, return repo@sha256:...")
+        registry = self.cfg.container_registry.rstrip("/")
+        image_name = local_tag.split(":")[0]
+        image_tag = local_tag.rsplit(":", 1)[1]
+
+        remote_tag = f"{registry}/{image_name}:{image_tag}"
+
+        subprocess.run(
+            ["docker", "tag", local_tag, remote_tag],
+            check=True,
+        )
+
+        subprocess.run(
+            ["docker", "push", remote_tag],
+            check=True,
+        )
+
+        result = subprocess.run(
+            ["docker", "inspect", "--format={{index .RepoDigests 0}}", remote_tag],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+
+        return result.stdout.strip()
 
     # submit_training / register_model  -> Lab 2 (Vertex custom training + Model Registry)
     # deploy / invoke                   -> Lab 3 (Vertex Endpoint)

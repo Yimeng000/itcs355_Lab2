@@ -55,7 +55,20 @@ def main() -> None:
     fingerprint = data.data_fingerprint(cfg.raw_path)
     train_df, val_df, test_df = data.split(df, seed=seed)
 
+    # mlflow.set_tracking_uri(cfg.mlflow_tracking_uri)
+    # mlflow.set_experiment(args.experiment)
+
     mlflow.set_tracking_uri(cfg.mlflow_tracking_uri)
+
+    client = mlflow.MlflowClient()
+    experiment = client.get_experiment_by_name(args.experiment)
+
+    if experiment is None:
+        client.create_experiment(
+            args.experiment,
+            artifact_location=str(cfg.reports_dir / "mlartifacts"),
+        )
+
     mlflow.set_experiment(args.experiment)
 
     with mlflow.start_run(run_name=args.run_name):
