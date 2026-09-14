@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 from pathlib import Path
 
@@ -23,6 +24,10 @@ from src import config, data, seeds
 
 
 def git_commit() -> str:
+    env_sha = os.environ.get("GIT_COMMIT_SHA")
+    if env_sha:
+        return env_sha
+
     try:
         out = subprocess.run(
             ["git", "rev-parse", "HEAD"],
@@ -32,6 +37,16 @@ def git_commit() -> str:
     except Exception:
         return "unknown"
 
+def dvc_hash() -> str:
+    dvc_file = config.REPO_ROOT / "data/raw.dvc"
+    try:
+        for line in dvc_file.read_text().splitlines():
+            line = line.strip()
+            if line.startswith("md5:") or line.startswith("- md5:"):
+                return line.split(":", 1)[1].strip()
+    except Exception:
+        pass
+    return "unknown"
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="ITCS355 Lab 1 — reproducible training")
@@ -78,6 +93,7 @@ def main() -> None:
             "min_samples_leaf": args.min_samples_leaf,
             "seed": seed,
             "n_features": len(data.FEATURES),
+            "dvc_hash": dvc_hash(),
         })
         # Provenance. This is what makes the metric traceable.
         mlflow.set_tags({

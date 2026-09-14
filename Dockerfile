@@ -19,7 +19,7 @@ WORKDIR /build
 COPY requirements.txt ./
 # TODO(Lab 1, Task 2): once requirements.txt carries hashes, add --require-hashes here.
 # It turns a silently-substituted package into a build failure, which is what you want.
-RUN pip install --prefix=/install -r requirements.txt
+RUN pip install --require-hashes --prefix=/install -r requirements.txt
 
 
 FROM python@sha256:9534e5a8e315485d4061ed659af0fd78a284c015f9b73661b41d6bab25604534 AS runtime
