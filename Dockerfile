@@ -32,6 +32,9 @@ ENV PYTHONUNBUFFERED=1 \
 
 COPY --from=builder /install /usr/local
 WORKDIR /app
+RUN mkdir -p /app/data/raw /app/reports \
+    && chown -R runner:runner /app/data /app/reports
+    
 COPY --chown=runner:runner src/ ./src/
 COPY --chown=runner:runner cloudlayer/ ./cloudlayer/
 COPY --chown=runner:runner scripts/ ./scripts/

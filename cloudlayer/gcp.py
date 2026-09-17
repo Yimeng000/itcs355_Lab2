@@ -22,6 +22,7 @@ from google.cloud import storage
 from google.cloud import aiplatform
 
 from cloudlayer.base import CloudAdapter
+from google.cloud.aiplatform_v1.types import custom_job as gca_custom_job
 
 
 class GcpAdapter(CloudAdapter):
@@ -73,6 +74,54 @@ class GcpAdapter(CloudAdapter):
         )
 
         return result.stdout.strip()
+
+    def submit_training(self, image_uri: str, args: dict) -> str:
+        aiplatform.init(
+            project=self.cfg.project_id,
+            location=self.cfg.region,
+        )
+
+        job = aiplatform.CustomContainerTrainingJob(
+            display_name="itcs355-lab2-training",
+            container_uri=image_uri,
+            staging_bucket=f"gs://{self.cfg.project_id}",
+        )
+
+        job.run(
+            args=[f"--{k}={v}" for k, v in args.items()],
+            machine_type="e2-standard-4",
+            replica_count=1,
+            scheduling_strategy=gca_custom_job.Scheduling.Strategy.SPOT,
+            environment_variables={
+                "CLOUD_PROVIDER": self.cfg.provider,
+                "PROJECT_ID": self.cfg.project_id,
+                "REGION": self.cfg.region,
+                "BLOB_URI": self.cfg.blob_uri,
+                "CONTAINER_REGISTRY": self.cfg.container_registry,
+                "MLFLOW_TRACKING_URI": "sqlite:////app/reports/mlflow.db",
+                "MODEL_REGISTRY_NAME": self.cfg.model_registry_name,
+                "IDENTITY_REF": self.cfg.identity_ref,
+            },
+            sync=False,
+        )
+
+        job.wait_for_resource_creation()
+
+        return job.resource_name
+    
+    def wait_training(self, job_id: str) -> dict:
+        aiplatform.init(
+            project=self.cfg.project_id,
+            location=self.cfg.region,
+        )
+
+        job = aiplatform.CustomJob.get(resource_name=job_id)
+        job.wait()
+
+        return {
+            "job_id": job.resource_name,
+            "state": str(job.state),
+        }
 
     # submit_training / register_model  -> Lab 2 (Vertex custom training + Model Registry)
     # deploy / invoke                   -> Lab 3 (Vertex Endpoint)

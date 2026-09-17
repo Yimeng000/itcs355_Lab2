@@ -8,6 +8,7 @@ the data fingerprint, and the Git commit. A metric that cannot be traced to code
 data is not evidence of anything.
 """
 from __future__ import annotations
+from cloudlayer.factory import get_adapter
 
 import argparse
 import json
@@ -66,7 +67,13 @@ def main() -> None:
     cfg = config.load(strict=False)
     seed = seeds.set_all(args.seed)
 
+    if not cfg.raw_path.exists():
+        adapter = get_adapter(cfg)
+        remote_data = f"{cfg.blob_uri.rstrip('/')}/lab2/sensors.csv"
+        adapter.download(remote_data, str(cfg.raw_path))
+
     df = data.load_raw(cfg.raw_path)
+
     fingerprint = data.data_fingerprint(cfg.raw_path)
     train_df, val_df, test_df = data.split(df, seed=seed)
 
