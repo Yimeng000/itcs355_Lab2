@@ -10,6 +10,7 @@ data is not evidence of anything.
 from __future__ import annotations
 from cloudlayer.factory import get_adapter
 
+import joblib
 import argparse
 import json
 import os
@@ -65,10 +66,10 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     cfg = config.load(strict=False)
+    adapter = get_adapter(cfg) 
     seed = seeds.set_all(args.seed)
 
     if not cfg.raw_path.exists():
-        adapter = get_adapter(cfg)
         remote_data = f"{cfg.blob_uri.rstrip('/')}/lab2/sensors.csv"
         adapter.download(remote_data, str(cfg.raw_path))
 
@@ -77,10 +78,17 @@ def main() -> None:
     fingerprint = data.data_fingerprint(cfg.raw_path)
     train_df, val_df, test_df = data.split(df, seed=seed)
 
-    # mlflow.set_tracking_uri(cfg.mlflow_tracking_uri)
-    # mlflow.set_experiment(args.experiment)
-
     mlflow.set_tracking_uri(cfg.mlflow_tracking_uri)
+
+    model_path = cfg.reports_dir / "model.joblib"
+    joblib.dump(model, model_path)
+
+    model_uri = adapter.upload(
+        str(model_path),
+        f"lab2/models/seed-{seed}/model.joblib",
+    )
+
+    print(f"model_uri={model_uri}")
 
     client = mlflow.MlflowClient()
     experiment = client.get_experiment_by_name(args.experiment)
@@ -134,6 +142,11 @@ def main() -> None:
             args.metrics_out.parent.mkdir(parents=True, exist_ok=True)
             args.metrics_out.write_text(json.dumps(
                 {"seed": seed, "data_fingerprint": fingerprint, **metrics}, indent=2))
+
+        adapter.upload(
+            str(args.metrics_out),
+            f"lab2/metrics/{args.metrics_out.name}",
+        )
 
 
 if __name__ == "__main__":

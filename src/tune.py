@@ -25,6 +25,8 @@ from sklearn.metrics import average_precision_score, roc_auc_score
 from src import config, costs, data, seeds
 from src.train import git_commit
 
+from cloudlayer.factory import get_adapter 
+
 # TODO(Lab 2): widen this. Three hyperparameters minimum, and vary something that
 # actually changes model behaviour rather than three variants of the same idea.
 SEARCH_SPACE: dict[str, list] = {
@@ -43,8 +45,13 @@ def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="ITCS355 Lab 2 — budgeted study")
     p.add_argument("--trials", type=int, default=12, help="minimum 12 for the lab")
     p.add_argument("--budget-thb", type=float, default=150.0)
-    p.add_argument("--instance", default="local", help="key into src/costs.py PRICE_TABLE")
+    p.add_argument("--instance", default="e2-standard-4", help="key into src/costs.py PRICE_TABLE")
     p.add_argument("--seed", type=int, default=seeds.DEFAULT_SEED)
+
+    p.add_argument("--n-estimators", type=int, default=None)
+    p.add_argument("--max-depth", type=int, default=None)
+    p.add_argument("--min-samples-leaf", type=int, default=None)
+
     p.add_argument("--experiment", default="itcs355-lab2")
     p.add_argument("--checkpoint", type=Path, default=Path("reports/tune_checkpoint.json"),
                    help="Resume file. Spot interruption should cost minutes, not the run.")
@@ -65,6 +72,7 @@ def save_checkpoint(path: Path, state: dict) -> None:
 def main() -> None:
     args = parse_args()
     cfg = config.load(strict=False)
+    adapter = get_adapter(cfg) 
     seed = seeds.set_all(args.seed)
 
     df = data.load_raw(cfg.raw_path)
@@ -75,12 +83,29 @@ def main() -> None:
     mlflow.set_experiment(args.experiment)
 
     state = load_checkpoint(args.checkpoint)
-    candidates = grid(SEARCH_SPACE)[: args.trials]
-    rate = costs.hourly_rate(cfg.provider, args.instance)
+    # candidates = grid(SEARCH_SPACE)[: args.trials]
+    if (
+        args.n_estimators is not None
+        and args.max_depth is not None
+        and args.min_samples_leaf is not None
+    ):
+        candidates = [{
+            "n_estimators": args.n_estimators,
+            "max_depth": args.max_depth,
+            "min_samples_leaf": args.min_samples_leaf,
+        }]
+    else:
+        candidates = grid(SEARCH_SPACE)[: args.trials]
+
+    rate = costs.hourly_rate(cfg.provider, args.instance, spot=True)
 
     skipped: list[dict] = []
     for i, params in enumerate(candidates):
-        key = json.dumps(params, sort_keys=True)
+        # key = json.dumps(params, sort_keys=True)
+        key = json.dumps(
+            {**params, "seed": seed},
+            sort_keys=True
+        )
         if key in state["completed"]:
             print(f"trial {i}: already done, skipping (resumed from checkpoint)")
             continue
@@ -90,32 +115,56 @@ def main() -> None:
             continue
 
         started = time.perf_counter()
+
+        job_id = adapter.submit_training(
+            image_uri="asia-southeast1-docker.pkg.dev/itcs355-6688176/itcs355/itcs355-lab1@sha256:5c7abb2b4ec1c9da5672fb9c2ae926c9c4eff3d40487579607664e4a8f9300e7",
+            args={
+                **params,
+                "seed": seed,
+                "experiment": args.experiment,
+                "run-name": f"trial-{i:02d}",
+                "metrics-out": f"/app/reports/trial-{i:02d}.json",
+            },       
+        )
+
+        result = adapter.wait_training(job_id)
+
+        if result["state"] != "PIPELINE_STATE_SUCCEEDED":
+            print(f"trial {i}: remote job failed with state={result['state']}")
+            continue
+
+        metrics_path = Path(f"reports/trial-{i:02d}.json")
+        remote_metrics = f"{cfg.blob_uri.rstrip('/')}/lab2/metrics/trial-{i:02d}.json"
+        adapter.download(remote_metrics, str(metrics_path))
+        metrics = json.loads(metrics_path.read_text())
+
+        elapsed_h = (time.perf_counter() - started) / 3600.0
+        trial_cost = elapsed_h * rate
+        state["spent_thb"] += trial_cost
+
         with mlflow.start_run(run_name=f"trial-{i:02d}"):
-            model = RandomForestClassifier(random_state=seed, n_jobs=-1, **params)
-            model.fit(train_df[data.FEATURES], train_df[data.TARGET])
+            mlflow.log_params({
+                **params,
+                "seed": seed,
+                "instance": args.instance,
+                "spot": True,
+            })
 
-            metrics = {}
-            for name, part in (("val", val_df), ("test", test_df)):
-                proba = model.predict_proba(part[data.FEATURES])[:, 1]
-                metrics[f"{name}_roc_auc"] = float(roc_auc_score(part[data.TARGET], proba))
-                metrics[f"{name}_pr_auc"] = float(average_precision_score(part[data.TARGET], proba))
-
-            elapsed_h = (time.perf_counter() - started) / 3600.0
-            trial_cost = elapsed_h * rate
-            state["spent_thb"] += trial_cost
-
-            mlflow.log_params({**params, "seed": seed, "instance": args.instance})
             mlflow.log_metrics({
-                **metrics,
+                "val_roc_auc": metrics["val_roc_auc"],
+                "val_pr_auc": metrics["val_pr_auc"],
+                "test_roc_auc": metrics["test_roc_auc"],
+                "test_pr_auc": metrics["test_pr_auc"],
                 "duration_s": round(elapsed_h * 3600, 3),
                 "cost_thb": round(trial_cost, 4),
             })
+
             mlflow.set_tags({
                 "git_commit": git_commit(),
                 "data_fingerprint": fingerprint,
+                "training_job_id": job_id,
                 "lab": "2",
             })
-            mlflow.sklearn.log_model(model, name="model")
 
         state["completed"].append(key)
         save_checkpoint(args.checkpoint, state)

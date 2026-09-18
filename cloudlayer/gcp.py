@@ -88,7 +88,7 @@ class GcpAdapter(CloudAdapter):
         )
 
         job.run(
-            args=[f"--{k}={v}" for k, v in args.items()],
+            args=[f"--{k.replace('_', '-')}={v}" for k, v in args.items()],
             machine_type="e2-standard-4",
             replica_count=1,
             scheduling_strategy=gca_custom_job.Scheduling.Strategy.SPOT,
@@ -110,18 +110,32 @@ class GcpAdapter(CloudAdapter):
         return job.resource_name
     
     def wait_training(self, job_id: str) -> dict:
-        aiplatform.init(
-            project=self.cfg.project_id,
-            location=self.cfg.region,
+        from google.cloud import aiplatform_v1
+        from google.api_core.client_options import ClientOptions
+        import time
+
+        client = aiplatform_v1.PipelineServiceClient(
+            client_options=ClientOptions(
+                api_endpoint=f"{self.cfg.region}-aiplatform.googleapis.com"
+            )
         )
 
-        job = aiplatform.CustomJob.get(resource_name=job_id)
-        job.wait()
+        while True:
+            pipeline = client.get_training_pipeline(name=job_id)
+            state = pipeline.state.name
 
-        return {
-            "job_id": job.resource_name,
-            "state": str(job.state),
-        }
+            if state in {
+                "PIPELINE_STATE_SUCCEEDED",
+                "PIPELINE_STATE_FAILED",
+                "PIPELINE_STATE_CANCELLED",
+                "PIPELINE_STATE_PAUSED",
+            }:
+                return {
+                    "job_id": job_id,
+                    "state": state,
+                }
+
+            time.sleep(15)
 
     # submit_training / register_model  -> Lab 2 (Vertex custom training + Model Registry)
     # deploy / invoke                   -> Lab 3 (Vertex Endpoint)
