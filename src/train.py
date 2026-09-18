@@ -80,16 +80,6 @@ def main() -> None:
 
     mlflow.set_tracking_uri(cfg.mlflow_tracking_uri)
 
-    model_path = cfg.reports_dir / "model.joblib"
-    joblib.dump(model, model_path)
-
-    model_uri = adapter.upload(
-        str(model_path),
-        f"lab2/models/seed-{seed}/model.joblib",
-    )
-
-    print(f"model_uri={model_uri}")
-
     client = mlflow.MlflowClient()
     experiment = client.get_experiment_by_name(args.experiment)
 
@@ -136,6 +126,16 @@ def main() -> None:
             metrics[f"{name}_pr_auc"] = float(average_precision_score(part[data.TARGET], proba))
         mlflow.log_metrics(metrics)
         mlflow.sklearn.log_model(model, name="model")
+
+        model_path = cfg.reports_dir / "model.joblib"
+        joblib.dump(model, model_path)
+
+        model_uri = adapter.upload(
+            str(model_path),
+            f"lab2/models/seed-{seed}/model.joblib",
+        )
+
+        print(f"model_uri={model_uri}")
 
         print(json.dumps({"seed": seed, "data_fingerprint": fingerprint, **metrics}, indent=2))
         if args.metrics_out:

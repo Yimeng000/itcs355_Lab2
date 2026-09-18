@@ -19,8 +19,6 @@ import time
 from pathlib import Path
 
 import mlflow
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import average_precision_score, roc_auc_score
 
 from src import config, costs, data, seeds
 from src.train import git_commit
