@@ -85,6 +85,7 @@ class GcpAdapter(CloudAdapter):
             display_name="itcs355-lab2-training",
             container_uri=image_uri,
             staging_bucket=f"gs://{self.cfg.project_id}",
+            labels=self.cfg.tags(2),
         )
 
         job.run(
@@ -154,6 +155,45 @@ class GcpAdapter(CloudAdapter):
         )
 
         return model.version_id
+
+    def teardown(self, tags: dict[str, str]) -> list[str]:
+        from google.api_core.client_options import ClientOptions
+        from google.cloud import aiplatform_v1
+
+        client = aiplatform_v1.PipelineServiceClient(
+            client_options=ClientOptions(
+                api_endpoint=f"{self.cfg.region}-aiplatform.googleapis.com"
+            )
+        )
+
+        parent = (
+            f"projects/{self.cfg.project_id}/"
+            f"locations/{self.cfg.region}"
+        )
+
+        deleted: list[str] = []
+
+        for pipeline in client.list_training_pipelines(parent=parent):
+            labels = dict(pipeline.labels)
+
+            labels_match = all(
+                labels.get(key) == value
+                for key, value in tags.items()
+            )
+
+            legacy_lab2_job = (
+                not labels
+                and pipeline.display_name == "itcs355-lab2-training"
+            )
+
+            if labels_match or legacy_lab2_job:
+                operation = client.delete_training_pipeline(
+                    name=pipeline.name
+                )
+                operation.result()
+                deleted.append(pipeline.name)
+
+        return deleted
 
     # submit_training / register_model  -> Lab 2 (Vertex custom training + Model Registry)
     # deploy / invoke                   -> Lab 3 (Vertex Endpoint)
