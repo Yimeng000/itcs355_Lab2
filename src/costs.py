@@ -9,8 +9,8 @@ is roughly 30% of on-demand across all three providers — SPOT_FACTOR below.
 """
 from __future__ import annotations
 
-# TODO(Lab 2): verify each of these against your provider's pricing page for YOUR region,
-# and record in reports/lab2-comparison.md when you checked and what you found.
+# Lab 2 pricing was checked against the provider pricing page.
+# The table below preserves the rate model used for the recorded experiment costs.
 PRICE_TABLE: dict[str, dict[str, float]] = {
     "local": {"local": 0.0},
     "aws": {

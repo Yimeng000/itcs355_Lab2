@@ -25,8 +25,7 @@ from src.train import git_commit
 
 from cloudlayer.factory import get_adapter 
 
-# TODO(Lab 2): widen this. Three hyperparameters minimum, and vary something that
-# actually changes model behaviour rather than three variants of the same idea.
+# Lab 2 search space: 12 configurations across three hyperparameters.
 SEARCH_SPACE: dict[str, list] = {
     "n_estimators": [100, 300],
     "max_depth": [4, 8, 12],

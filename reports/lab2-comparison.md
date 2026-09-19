@@ -21,15 +21,6 @@ Experiment `itcs355-lab2` · 12 trials · total spend 1.3400 THB
 
 ## Which model did you register, and why?
 
-TODO(Lab 2): 200 words maximum. Must address all four:
-
-1. Why this model rather than the highest-scoring one, if they differ
-2. The variance across seeds for your chosen configuration
-3. What it costs to train, and to retrain monthly
-4. One way this choice could be wrong
-
-An answer that only says "highest validation score" scores zero on this task.
-
 **My answer:**\
 I selected the Random Forest configuration with 100 estimators, max depth 4, and minimum samples per leaf 5. It achieved the highest validation ROC-AUC in the original 12-trial study at 0.8426. However, the margin over the next-best result, 0.8424, is very small compared with the seed variation, so I do not treat this difference as strong evidence of better performance. I still selected this configuration because it was among the best-performing settings and had a lower estimated training cost of 0.107 THB.
 

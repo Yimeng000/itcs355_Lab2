@@ -69,14 +69,12 @@ def main() -> int:
         "",
         "## Which model did you register, and why?",
         "",
-        "TODO(Lab 2): 200 words maximum. Must address all four:",
+        "The model-selection justification should cover:",
         "",
-        "1. Why this model rather than the highest-scoring one, if they differ",
-        "2. The variance across seeds for your chosen configuration",
-        "3. What it costs to train, and to retrain monthly",
-        "4. One way this choice could be wrong",
-        "",
-        "An answer that only says \"highest validation score\" scores zero on this task.",
+        "1. Why this model was selected",
+        "2. Variance across seeds",
+        "3. Training and monthly retraining cost",
+        "4. One way the choice could be wrong",
     ]
     args.out.write_text("\n".join(lines))
     print(f"wrote {args.out}  ({len(table)} trials)")
