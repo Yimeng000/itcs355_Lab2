@@ -137,6 +137,24 @@ class GcpAdapter(CloudAdapter):
 
             time.sleep(15)
 
+    def register_model(self, model_uri: str, name: str) -> str:
+        aiplatform.init(
+            project=self.cfg.project_id,
+            location=self.cfg.region,
+        )
+
+        model = aiplatform.Model.upload(
+            display_name=name,
+            artifact_uri=model_uri,
+            serving_container_image_uri=(
+                "asia-docker.pkg.dev/vertex-ai/"
+                "prediction/sklearn-cpu.1-6:latest"
+            ),
+            sync=True,
+        )
+
+        return model.resource_name
+
     # submit_training / register_model  -> Lab 2 (Vertex custom training + Model Registry)
     # deploy / invoke                   -> Lab 3 (Vertex Endpoint)
     # emit_metric                       -> Lab 4 (Cloud Monitoring time series)
