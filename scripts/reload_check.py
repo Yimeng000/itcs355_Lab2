@@ -17,8 +17,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-import mlflow
+import joblib
 
+from cloudlayer.factory import get_adapter
 from src import config, data
 
 
@@ -30,11 +31,16 @@ def main() -> int:
     args = ap.parse_args()
 
     cfg = config.load(strict=False)
-    mlflow.set_tracking_uri(cfg.mlflow_tracking_uri)
+    adapter = get_adapter(cfg)
 
-    uri = f"models:/{args.name}/{args.version}"
-    print(f"loading {uri}")
-    model = mlflow.sklearn.load_model(uri)
+    artifact_uri = adapter.get_model_uri(args.name, args.version)
+    model_uri = f"{artifact_uri.rstrip('/')}/model.joblib"
+
+    local_model = Path("reports/reload-model.joblib")
+    print(f"loading {args.name} version {args.version} from registry")
+    adapter.download(model_uri, str(local_model))
+
+    model = joblib.load(local_model)
 
     df = data.load_raw(cfg.raw_path)
     _, _, test_df = data.split(df, seed=20260101)

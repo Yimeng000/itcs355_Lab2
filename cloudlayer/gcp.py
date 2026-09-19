@@ -156,6 +156,32 @@ class GcpAdapter(CloudAdapter):
 
         return model.version_id
 
+    def get_model_uri(self, name: str, version: str) -> str:
+        aiplatform.init(
+            project=self.cfg.project_id,
+            location=self.cfg.region,
+        )
+
+        models = aiplatform.Model.list(
+            filter=f'display_name="{name}"',
+        )
+        if not models:
+            raise ValueError(f"Registered model {name!r} not found")
+
+        model_id = models[0].name
+        model = aiplatform.Model(
+            model_name=f"{model_id}@{version}",
+        )
+
+        artifact_uri = model.gca_resource.artifact_uri
+
+        if not artifact_uri:
+            raise ValueError(
+            f"Registered model {name!r} version {version!r} has no artifact URI"
+        )
+
+        return artifact_uri
+
     def teardown(self, tags: dict[str, str]) -> list[str]:
         from google.api_core.client_options import ClientOptions
         from google.cloud import aiplatform_v1

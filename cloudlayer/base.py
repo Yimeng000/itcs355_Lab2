@@ -47,6 +47,10 @@ class CloudAdapter(ABC):
     def register_model(self, model_uri: str, name: str) -> str:
         raise NotImplementedError("Lab 2")
 
+    def get_model_uri(self, name: str, version: str) -> str:
+        """Return the artifact URI for a registered model version."""
+        raise NotImplementedError("Lab 2")
+
     # --- Lab 3 ---------------------------------------------------------------
     def deploy(self, model_ref: str, endpoint: str, instance: str) -> str:
         raise NotImplementedError("Lab 3")
