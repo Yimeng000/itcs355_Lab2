@@ -115,7 +115,7 @@ def main() -> None:
         started = time.perf_counter()
 
         job_id = adapter.submit_training(
-            image_uri="asia-southeast1-docker.pkg.dev/itcs355-6688176/itcs355/itcs355-lab1@sha256:5c7abb2b4ec1c9da5672fb9c2ae926c9c4eff3d40487579607664e4a8f9300e7",
+            image_uri=cfg.training_image_uri,
             args={
                 **params,
                 "seed": seed,
