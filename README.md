@@ -134,3 +134,9 @@ writable without elevated permissions.
 
 That last check is not optional. A credential in Git history is an automatic deduction in this
 course, and rotating it is your responsibility, not the grader's.
+
+## Lab 2 — Model promotion
+
+In a real organisation, promotion to the `staging` stage should be restricted to an authorised ML engineer, MLOps engineer, or designated model owner rather than every developer.
+
+Before promotion, they should check the model lineage, including the Git commit, data version, MLflow run ID, training job ID, container image digest, seed, validation metric, and test metric. They should also verify that the training job completed successfully and that the selected model passed the required validation and test checks.
