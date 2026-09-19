@@ -153,7 +153,7 @@ class GcpAdapter(CloudAdapter):
             sync=True,
         )
 
-        return model.resource_name
+        return model.version_id
 
     # submit_training / register_model  -> Lab 2 (Vertex custom training + Model Registry)
     # deploy / invoke                   -> Lab 3 (Vertex Endpoint)
