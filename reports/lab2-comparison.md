@@ -31,7 +31,7 @@ TODO(Lab 2): 200 words maximum. Must address all four:
 An answer that only says "highest validation score" scores zero on this task.
 
 **My answer:**\
-I selected the Random Forest configuration with 100 estimators, max depth 4, and minimum samples per leaf 5. It achieved the highest validation ROC-AUC in the original 12-trial study at 0.8426 while also having a low estimated training cost of 0.107 THB, so there was no reason to choose a lower-scoring configuration for cost savings.
+I selected the Random Forest configuration with 100 estimators, max depth 4, and minimum samples per leaf 5. It achieved the highest validation ROC-AUC in the original 12-trial study at 0.8426. However, the margin over the next-best result, 0.8424, is very small compared with the seed variation, so I do not treat this difference as strong evidence of better performance. I still selected this configuration because it was among the best-performing settings and had a lower estimated training cost of 0.107 THB.
 
 To evaluate stability, I repeated this configuration with three seeds. The validation ROC-AUC values were 0.8426, 0.8479, and 0.8492, giving a mean of approximately 0.8466 and a standard deviation of about 0.0029. The corresponding test ROC-AUC values were 0.8533, 0.8643, and 0.8426.
 
